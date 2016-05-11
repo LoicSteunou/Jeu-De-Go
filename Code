@@ -1,0 +1,569 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef char plateau[21][21];
+typedef	int verifplateau[21][21];
+
+// joueur 1 commence et donc NOIR
+
+void iniplateau(plateau plat) // Remplit le tableau-carte en début de partie
+{
+	int i,j;
+	for (i=0;i<21;i++)
+	{
+		for (j=0;j<21;j++)
+		{
+			if ((i==0) || (j==0) || (j==20) || (i==20))
+			{ plat[i][j] = 'F'; }
+			else
+			{ plat[i][j] = 'O'; }
+		}
+	}
+}
+
+void afficheplateau(plateau plat)
+{
+	int i,j;
+	for (i=1 ; i<20 ; i++)
+	{
+		for (j=1 ; j<20 ; j++)
+		{
+			if (j==19)
+			{
+				printf(" %c \n",plat[i][j]);
+			}
+			else
+			{
+				printf(" %c |",plat[i][j]);
+			}
+		}
+	}
+	printf(" \n");
+}
+
+void afficheverifplateau(verifplateau plat) // Fonction utilisé dans le débugage, affiche le tableau de bouléen
+{
+	int i,j;
+	for (i=1 ; i<20 ; i++)
+	{
+		for (j=1 ; j<20 ; j++)
+		{
+			if (j==19)
+			{
+				printf(" %d \n",plat[i][j]);
+			}
+			else
+			{
+				printf(" %d |",plat[i][j]);
+			}
+		}
+	}
+	printf(" \n");
+}
+
+int plateauidentique (plateau plat1, plateau plat2) // renvoie 1 si les 2 plateaux en entrees sont identiques
+{
+	int id=1;
+	int i, j;
+	for (i=1 ; i<20 ; i++)
+	{
+		for (j=1 ; j<20 ;j++)
+		{
+			if (plat1[i][j]!=plat2[i][j])
+			{
+			id=0;
+			}
+		}
+	}
+	return id;
+}
+
+int casesentoure (plateau plat,int x, int y, int indicejoueur) // renvoie 1 si la case en entrée est entouré par le joueur adverse, 0 sinon
+{
+	int res;
+	if (indicejoueur==1)
+	{
+		if ((plat[x-1][y]=='F'|| plat[x-1][y]=='B') && (plat[x+1][y]=='F' || plat[x+1][y]=='B') && (plat[x][y-1]=='F' || plat[x][y-1]=='B') && (plat[x][y+1]=='F' || plat[x][y+1]=='B'))
+		{
+			res=1;
+		}
+		else { res=0; }
+	}
+	else
+	{
+		if ((plat[x-1][y]=='F' || plat[x-1][y]=='N') && (plat[x+1][y]=='F' || plat[x+1][y]=='N') && (plat[x][y-1]=='F' || plat[x][y-1]=='N') && (plat[x][y+1]=='F' || plat[x][y+1]=='N'))
+		{
+			res=1;
+		}
+		else { res=0; }
+	}
+	return res;
+}
+
+void remiseazeroverifplateau(verifplateau plat) // remplie verifplateau ( le tableau de bouléen) de 0
+{
+	int i,j;
+	for (i=0;i<21;i++)
+	{
+		for (j=0;j<21;j++)
+		{
+		plat[i][j] = 0;
+		}
+	}
+}
+
+float identifierbloc(plateau plat,verifplateau verifplat,char lettre,int x,int y) // compte combien de cases comporte le bloc auquel appartient la cases x,y et remplie verifplateau avec des 1 aux cases qui composent ce tableau
+{
+    float a,b,c,d,e;
+    if (verifplat[x][y]==1)
+    {
+        return 0;
+    }
+    else
+    {
+        if (plat[x][y]==lettre)
+        {
+            verifplat[x][y]=1;
+            a=1;
+            b=identifierbloc(plat,verifplat,lettre,x+1,y);
+            c=identifierbloc(plat,verifplat,lettre,x-1,y);
+            d=identifierbloc(plat,verifplat,lettre,x,y-1);
+            e=identifierbloc(plat,verifplat,lettre,x,y+1);
+            return (a+b+c+d+e);
+        }
+        else
+        {
+            return 0;
+        }
+    }
+}
+
+int blocentoure(plateau plat, verifplateau verifplat) // renvoie 1 si le bloc selectionne est encercle,0 sinon
+{
+    int res,i,j;
+    res=1;
+    for (i=1;i<20;i++)
+    {
+        for (j=1;j<20;j++)
+        {
+            if (verifplat[i][j]==1)
+            {
+                if (plat[i-1][j]=='O' || plat[i+1][j]=='O' || plat[i][j-1]=='O' || plat[i][j+1]=='O' )
+                {
+                    res=0;
+                }
+            }
+        }
+    }
+    return res;
+}
+
+void nettoyage(plateau plat,verifplateau verifplat) // retire les pions de la carte qui ont été selectionné dans la carte de bouléen verifplat
+{
+    int i,j;
+    for (i=1;i<20;i++)
+    {
+        for (j=1;j<20;j++)
+        {
+            if (verifplat[i][j]==1)
+            {
+                plat[i][j]='O';
+            }
+        }
+    }
+}
+
+void findetour(plateau plat,int x,int y) // A la fin du tour, retire les éventuels pions mangés
+{
+	verifplateau verifplat;
+	int boolean;
+    char a,b;
+    remiseazeroverifplateau(verifplat);
+    b=plat[x][y];
+    a=plat[x-1][y];
+    if ((a!='O') && (a!=b) && (a!='F'))
+    {
+        identifierbloc(plat,verifplat,a,x-1,y);
+        boolean=blocentoure(plat,verifplat);
+        if (boolean==1)
+        {
+            nettoyage(plat,verifplat);
+        }
+    }
+
+    remiseazeroverifplateau(verifplat);
+    a=plat[x+1][y];
+    if ((a!='O') && (a!=b) && (a!='F'))
+    {
+        identifierbloc(plat,verifplat,a,x+1,y);
+        boolean=blocentoure(plat,verifplat);
+        if (boolean==1)
+        {
+            nettoyage(plat,verifplat);
+        }
+    }
+
+    remiseazeroverifplateau(verifplat);
+    a=plat[x][y-1];
+    if ((a!='O') && (a!=b) && (a!='F'))
+    {
+        identifierbloc(plat,verifplat,a,x,y-1);
+        boolean=blocentoure(plat,verifplat);
+        if (boolean==1)
+        {
+            nettoyage(plat,verifplat);
+        }
+    }
+
+    remiseazeroverifplateau(verifplat);
+    a=plat[x][y+1];
+    if ((a!='O') && (a!=b) && (a!='F'))
+    {
+        identifierbloc(plat,verifplat,a,x,y+1);
+        boolean=blocentoure(plat,verifplat);
+        if (boolean==1)
+        {
+            nettoyage(plat,verifplat);
+        }
+    }
+}
+
+void copieplateau(plateau plat1, plateau plat2) //c'est plat2 qui va prendre les valeurs de plat1
+{
+    int i,j;
+    for (i=0 ; i<21 ; i++)
+    {
+        for (j=0 ; j<21 ; j++)
+        {
+            plat2[i][j]=plat1[i][j];
+        }
+    }
+}
+
+void ajoutverifplateau(verifplateau plat1, verifplateau plat2) // plat1 garde ces 1 (vrai) aux mêmes endroits mais prend en plus les 1 de plateau2
+{
+    int i,j;
+    for (i=0 ; i<21 ; i++)
+    {
+        for (j=0 ; j<21 ; j++)
+        {
+		if ((plat1[i][j]==0) && (plat2[i][j]==1))
+		{
+			plat1[i][j]=1;
+		}
+        }
+    }
+}
+
+int coupvalide(plateau platancien, plateau platactuel, int indicejoueur, int x, int y) //renvoit 1 si le coup est valide 0 sinon
+{
+    int coupval=1, coupval1, coupval2, coupval3, coupval4;
+    plateau plat3;
+    verifplateau verifplat;
+    char a;
+
+    if (platactuel[x][y]!='O')
+    {
+            return 0;
+    }
+    else
+    {
+        copieplateau(platactuel,plat3);
+        if (indicejoueur==1)
+        {
+            a='N';
+        }
+        else
+        {
+            a='B';
+        }
+        plat3[x][y]=a;
+        findetour(plat3,x,y);
+        coupval=plateauidentique(platancien,plat3);
+        if (coupval==1)
+        {
+            return(0);
+        }
+        else
+        {
+            remiseazeroverifplateau(verifplat);
+            identifierbloc(plat3,verifplat,a,x,y);
+            coupval=blocentoure(plat3,verifplat);
+            if (coupval==0)
+            {
+                return(1);
+            }
+            else
+            {
+                remiseazeroverifplateau(verifplat);
+                identifierbloc(plat3,verifplat,a,x+1,y);
+                coupval1=blocentoure(plat3,verifplat);
+
+                remiseazeroverifplateau(verifplat);
+                identifierbloc(plat3,verifplat,a,x-1,y);
+                coupval2=blocentoure(plat3,verifplat);
+
+                remiseazeroverifplateau(verifplat);
+                identifierbloc(plat3,verifplat,a,x,y+1);
+                coupval3=blocentoure(plat3,verifplat);
+
+                remiseazeroverifplateau(verifplat);
+                identifierbloc(plat3,verifplat,a,x,y-1);
+                coupval4=blocentoure(plat3,verifplat);
+
+                if (coupval1==0 && coupval2==0 && coupval3==0 && coupval4==0)
+                {
+                    return(0);
+                }
+                else
+                {
+                    return(1);
+                }
+            }
+        }
+    }
+
+}
+
+char natureentourant(plateau plat, verifplateau verifplat) // renvoie N ou B en fonction de quel joueur entoure ce bloc
+{
+	int i,j,a;
+	a=0;
+	i=1;
+	j=1;
+	while ((a==0) && (i<=20))
+	{	if (verifplat[i][j]==1)
+		{
+			if (plat[i-1][j]=='N' || plat[i-1][j]=='B')
+			{
+				a=1;
+				return plat[i-1][j];
+			}
+			else
+			{
+				if (plat[i+1][j]=='N' || plat[i+1][j]=='B')
+				{
+					a=1;
+					return plat[i+1][j];
+				}
+				else
+				{
+					if (plat[i][j-1]=='N' || plat[i][j-1]=='B')
+					{
+						a=1;
+						return plat[i][j-1];
+					}
+					else
+					{
+						if (plat[i][j+1]=='N' || plat[i][j+1]=='B')
+						{
+							a=1;
+							return plat[i][j+1];
+						 }
+					}
+				}
+			}
+		}
+		j=j+1;
+		if (j==20)
+		{
+			j=1;
+			i=i+1;
+		}
+	}
+}
+
+float comptagepointN(plateau plat,float handicap) // compte les points obtenus par le joueur Noir
+{
+	verifplateau verifplat1,verifplat2;
+	int i,j;
+	float score,scoreN;
+	char a;
+	scoreN=0;
+	remiseazeroverifplateau(verifplat1);
+	for (i=1;i<20;i++)
+	{
+		for (j=1;j<20;j++)
+		{
+			if (verifplat1[i][j]==0)
+			{
+				score=0;
+				remiseazeroverifplateau(verifplat2);
+				a=plat[i][j];
+				score=identifierbloc(plat,verifplat2,a,i,j);
+				if (a=='N')
+				{
+					scoreN=scoreN+score;
+				}
+				if (a=='O')
+				{
+					a=natureentourant(plat,verifplat2);
+					if (a=='N')
+					{	scoreN=scoreN+score;  }
+				}
+				ajoutverifplateau(verifplat1,verifplat2);
+			}
+		}
+	}
+	return scoreN;
+}
+
+float comptagepointB(plateau plat,float handicap) // compte les points obtenus par le joueur Blanc
+{
+	verifplateau verifplat1,verifplat2;
+	int i,j;
+	float score,scoreB;
+	char a;
+	if (handicap==0)
+	{	scoreB=7.5;                   	}
+	else
+	{	scoreB=0.5+handicap;             }
+    remiseazeroverifplateau(verifplat1);
+	for (i=1;i<20;i++)
+	{
+		for (j=1;j<20;j++)
+		{
+			if (verifplat1[i][j]==0)
+			{
+				score=0;
+				remiseazeroverifplateau(verifplat2);
+				a=plat[i][j];
+				score=identifierbloc(plat,verifplat2,a,i,j);
+				if (a=='B')
+				{
+					scoreB=scoreB+score;
+				}
+				if (a=='O')
+				{
+					a=natureentourant(plat,verifplat2);
+					if (a=='B')
+					{	scoreB=scoreB+score;  }
+				}
+				ajoutverifplateau(verifplat1,verifplat2);
+			}
+		}
+	}
+	return scoreB;
+}
+
+void selectioncasesmorte(plateau plat) // remplit un tableau de bouléens de vrai là ou se trouve un bloc "mort" (encerclé)
+{
+    verifplateau verifplat;
+    int x,y,rep;
+    char a;
+    rep=1;
+    while (rep!=0)
+    {
+        printf("Il a t-il des cases mortes sur le terrain ? 0 non 1 oui\n");
+        scanf("%d",&rep);
+        if (rep==1)
+         {
+            printf("Veulliez selectionner une case morte. Il faudrait que chaque bloc de vide ne soit en contact qu'avec une seule couleur \n");
+            scanf("%d \n",&x);
+            scanf("%d \n",&y);
+            a=plat[x][y];
+            remiseazeroverifplateau(verifplat);
+            identifierbloc(plat,verifplat,a,x,y);
+            nettoyage(plat,verifplat);
+            afficheplateau(plat);
+        }
+    }
+}
+
+void findepartie (plateau plat,int handicap) // compte les points et affiche le vainqueur
+{
+    float scoreN,scoreB;
+    selectioncasesmorte(plat);
+    scoreB=comptagepointB(plat,handicap);
+    scoreN=comptagepointN(plat,handicap);
+    if (scoreB<scoreN)
+    {   printf("Le vainqueur est le Noir (joueur 1) avec %f points, Blanc finit avec %f points",scoreN,scoreB); }
+    else
+    {   printf("Le vainqueur est le Blanc (joueur 2) avec %f points, Noir finit avec %f points",scoreB,scoreN); }
+}
+
+int tour(plateau platancien, plateau platactuel, int indicejoueur) // gère le tour d'un joueur
+{
+    char a;
+    int action, x, y, coup=0;
+    afficheplateau(platactuel);
+
+    printf("Que voulez vous faire ? jouer : 1, passer : 0 \n");
+    scanf("%d",&action);
+
+    if (action==0)
+    {
+        return(1);
+    }
+    else
+    {
+        if (action==1)
+        {
+            while (coup==0)
+            {
+                printf("Ou voulez jouer ? \n");
+                scanf("%d",&x);
+                scanf("%d",&y);
+                coup=coupvalide(platancien,platactuel,indicejoueur,x,y);
+            }
+
+            copieplateau(platactuel,platancien);
+            if (indicejoueur==1)
+            {
+                a='N';
+            }
+            else
+            {
+                a='B';
+            }
+            platactuel[x][y]=a;
+            findetour(platactuel,x,y);
+            return(0);
+        }
+    }
+}
+
+void partie (plateau plat)  // gère une partie
+{
+
+    plateau platavant;
+    iniplateau(platavant);
+    int indicejoueur=1, passe1=0, passe2=0, handicap, i;
+    printf("Noir commence. Il y a t'il un handicap pour le joueur blanc, c'est a dire un nombre de tour d'avance pour le joueur Noir ?\n");
+    scanf("%d",&handicap);
+    if (handicap!=0)
+    {
+        for (i=1 ; i<handicap+1 ; i++)
+        {
+
+            tour(platavant,plat,indicejoueur);
+        }
+    }
+    while (passe1!=1 || passe2!=1)
+    {
+        if (indicejoueur==1)
+        {
+            printf("noir c'est votre tour \n");
+            passe1=tour(platavant,plat,indicejoueur);
+            indicejoueur=2;
+        }
+        else
+        {
+            if (indicejoueur==2)
+            {
+                printf("blanc c'est votre tour \n");
+                passe2=tour(platavant,plat,indicejoueur);
+                indicejoueur=1;
+            }
+        }
+
+    }
+    findepartie(plat,handicap);
+}
+
+int main()
+{
+    plateau plat;
+    iniplateau(plat);
+    partie(plat);
+}
